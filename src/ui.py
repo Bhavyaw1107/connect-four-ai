@@ -66,8 +66,8 @@ BRAND_SIGNATURE_LABEL = "DESIGNED & ENGINEERED BY"
 BRAND_SIGNATURE_NAMES = "Mit Parekh & Bhavya Parmar"
 COPYRIGHT_TEXT = "© 2026 ConnectDots. All rights reserved."
 WINDOW_FLAGS = pygame.RESIZABLE
-MIN_WINDOW_WIDTH = 300
-MIN_WINDOW_HEIGHT = 300
+MIN_WINDOW_WIDTH = 900
+MIN_WINDOW_HEIGHT = 760
 
 
 # Fonts are created lazily after pygame is initialized.
@@ -226,11 +226,53 @@ def get_viewport(window_size):
     return pygame.Rect(offset_x, offset_y, render_width, render_height)
 
 
-def create_window(size):
-    """Create a window constrained to safe minimum dimensions."""
+def get_desktop_size():
+    """Return the current desktop resolution."""
+    desktop_sizes = pygame.display.get_desktop_sizes()
+    if desktop_sizes:
+        return desktop_sizes[0]
+
+    display_info = pygame.display.Info()
+    return display_info.current_w, display_info.current_h
+
+
+def create_window(size, fullscreen=False):
+    """Create a responsive window; fullscreen uses a maximized windowed view."""
+    if fullscreen:
+        desktop_w, desktop_h = get_desktop_size()
+        screen = pygame.display.set_mode((desktop_w, desktop_h), WINDOW_FLAGS)
+        return screen
+
     width = max(MIN_WINDOW_WIDTH, size[0])
     height = max(MIN_WINDOW_HEIGHT, size[1])
-    return pygame.display.set_mode((width, height), WINDOW_FLAGS)
+
+    desktop_w, desktop_h = get_desktop_size()
+    width = min(width, desktop_w)
+    height = min(height, desktop_h)
+    screen = pygame.display.set_mode((width, height), WINDOW_FLAGS)
+    return screen
+
+
+def toggle_fullscreen(screen, is_fullscreen, windowed_size):
+    """Toggle between maximized windowed mode and the last windowed size."""
+    if is_fullscreen:
+        new_screen = create_window(windowed_size, fullscreen=False)
+        return new_screen, False, new_screen.get_size()
+
+    current_size = screen.get_size()
+    new_screen = create_window(get_desktop_size(), fullscreen=True)
+    return new_screen, True, current_size
+
+
+def handle_resize_event(event_size, windowed_size):
+    """Apply resize safely and preserve a reliable logical window state."""
+    new_screen = create_window(event_size, fullscreen=False)
+    actual_size = new_screen.get_size()
+    desktop_size = get_desktop_size()
+    is_fullscreen = actual_size[0] >= desktop_size[0] and actual_size[1] >= desktop_size[1] - 2
+    if is_fullscreen:
+        return new_screen, True, windowed_size
+    return new_screen, False, actual_size
 
 
 def present_canvas(window, canvas):
@@ -478,10 +520,10 @@ def render_game_scene(
 
     if overlay:
         footer_left = "Winning four is highlighted on the board."
-        footer_right = "Press R or Enter to replay. Press Esc or M for menu."
+        footer_right = "Press R or Enter to replay. Esc or M for menu. F11 toggles fullscreen."
     else:
         footer_left = "Click a column to drop your dot." if is_player_turn else "Watch the AI plan its next move."
-        footer_right = "Use Menu anytime during the game."
+        footer_right = "Use Menu anytime. Press F11 to toggle fullscreen."
     draw_footer(
         screen,
         footer_left,
@@ -498,7 +540,9 @@ class LandingPage:
     def __init__(self):
         ensure_pygame()
         pygame.display.set_caption("Connect Dots")
-        self.screen = create_window((WIDTH, HEIGHT))
+        self.windowed_size = (WIDTH, HEIGHT)
+        self.is_fullscreen = True
+        self.screen = create_window(get_desktop_size(), fullscreen=True)
         self.canvas = pygame.Surface((WIDTH, HEIGHT))
         self.clock = pygame.time.Clock()
         self.play_button = pygame.Rect(WIDTH // 2 - 170, HEIGHT // 2 + 22, 340, 70)
@@ -513,7 +557,10 @@ class LandingPage:
                 sys.exit()
 
             if event.type == pygame.VIDEORESIZE:
-                self.screen = create_window((event.w, event.h))
+                self.screen, self.is_fullscreen, self.windowed_size = handle_resize_event(
+                    (event.w, event.h),
+                    self.windowed_size,
+                )
 
             if event.type == pygame.MOUSEMOTION:
                 mouse_pos = to_virtual_pos(event.pos, self.screen.get_size())
@@ -529,6 +576,13 @@ class LandingPage:
                     return "play"
                 if self.guide_button.collidepoint(mouse_pos):
                     return "guide"
+
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_F11:
+                self.screen, self.is_fullscreen, self.windowed_size = toggle_fullscreen(
+                    self.screen,
+                    self.is_fullscreen,
+                    self.windowed_size,
+                )
 
         return None
 
@@ -619,7 +673,9 @@ class GuidePage:
     def __init__(self):
         ensure_pygame()
         pygame.display.set_caption("Connect Dots - Guide")
-        self.screen = create_window((WIDTH, HEIGHT))
+        self.windowed_size = (WIDTH, HEIGHT)
+        self.is_fullscreen = True
+        self.screen = create_window(get_desktop_size(), fullscreen=True)
         self.canvas = pygame.Surface((WIDTH, HEIGHT))
         self.clock = pygame.time.Clock()
         self.back_button = pygame.Rect(48, HEIGHT - 98, 140, 58)
@@ -633,7 +689,10 @@ class GuidePage:
                 sys.exit()
 
             if event.type == pygame.VIDEORESIZE:
-                self.screen = create_window((event.w, event.h))
+                self.screen, self.is_fullscreen, self.windowed_size = handle_resize_event(
+                    (event.w, event.h),
+                    self.windowed_size,
+                )
 
             if event.type == pygame.MOUSEMOTION:
                 mouse_pos = to_virtual_pos(event.pos, self.screen.get_size())
@@ -643,6 +702,13 @@ class GuidePage:
                 mouse_pos = to_virtual_pos(event.pos, self.screen.get_size())
                 if self.back_button.collidepoint(mouse_pos):
                     return "back"
+
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_F11:
+                self.screen, self.is_fullscreen, self.windowed_size = toggle_fullscreen(
+                    self.screen,
+                    self.is_fullscreen,
+                    self.windowed_size,
+                )
 
         return None
 
@@ -766,7 +832,9 @@ class ConnectFourUI:
     def __init__(self):
         ensure_pygame()
         pygame.display.set_caption("Connect Dots")
-        self.screen = pygame.display.set_mode((WIDTH, HEIGHT), WINDOW_FLAGS)
+        self.windowed_size = (WIDTH, HEIGHT)
+        self.is_fullscreen = True
+        self.screen = create_window(get_desktop_size(), fullscreen=True)
         self.canvas = pygame.Surface((WIDTH, HEIGHT))
         self.clock = pygame.time.Clock()
         self.home_button = pygame.Rect(WIDTH - 154, 28, 122, 56)
@@ -797,9 +865,10 @@ class ConnectFourUI:
                 sys.exit()
 
             if event.type == pygame.VIDEORESIZE:
-                new_width = max(MIN_WINDOW_WIDTH, event.w)
-                new_height = max(MIN_WINDOW_HEIGHT, event.h)
-                self.screen = pygame.display.set_mode((new_width, new_height), WINDOW_FLAGS)
+                self.screen, self.is_fullscreen, self.windowed_size = handle_resize_event(
+                    (event.w, event.h),
+                    self.windowed_size,
+                )
 
             if event.type == pygame.MOUSEMOTION:
                 mouse_pos = to_virtual_pos(event.pos, self.screen.get_size())
@@ -836,7 +905,13 @@ class ConnectFourUI:
                         col_to_play = col
 
             if event.type == pygame.KEYDOWN:
-                if event.key in (pygame.K_ESCAPE, pygame.K_m):
+                if event.key == pygame.K_F11:
+                    self.screen, self.is_fullscreen, self.windowed_size = toggle_fullscreen(
+                        self.screen,
+                        self.is_fullscreen,
+                        self.windowed_size,
+                    )
+                elif event.key in (pygame.K_ESCAPE, pygame.K_m):
                     action = "menu"
                 elif game_over and event.key in (pygame.K_r, pygame.K_RETURN):
                     action = "restart"

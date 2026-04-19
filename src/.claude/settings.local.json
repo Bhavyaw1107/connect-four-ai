@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python main.py)",
+      "Bash(python -c \"import ui; print\\('UI module loaded OK'\\)\")",
+      "Bash(python -c ' *)"
+    ]
+  }
+}
