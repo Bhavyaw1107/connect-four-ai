@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//d E:/AI Project/**)",
+      "Bash(python -m py_compile connect_four.py)",
+      "Bash(python -m py_compile \"E:/AI Project/connect-four-ai/connect_four.py\")",
+      "Bash(python -m py_compile \"E:/AI Project/connect-four-ai/src/constants.py\")",
+      "Bash(python -m py_compile \"E:/AI Project/connect-four-ai/src/game_logic.py\")",
+      "Bash(python -m py_compile \"E:/AI Project/connect-four-ai/src/evaluation.py\")",
+      "Bash(python -m py_compile \"E:/AI Project/connect-four-ai/src/minimax.py\")",
+      "Bash(python -m py_compile \"E:/AI Project/connect-four-ai/src/ui.py\")",
+      "Bash(python -m py_compile \"E:/AI Project/connect-four-ai/src/main.py\")",
+      "Bash(python -m py_compile \"E:/AI Project/connect-four-ai/src/constants.py\" \"E:/AI Project/connect-four-ai/src/game_logic.py\" \"E:/AI Project/connect-four-ai/src/evaluation.py\" \"E:/AI Project/connect-four-ai/src/minimax.py\" \"E:/AI Project/connect-four-ai/src/ui.py\" \"E:/AI Project/connect-four-ai/src/main.py\")",
+      "Bash(python *)"
+    ]
+  }
+}
